@@ -32,10 +32,16 @@ gameScene.create = function() {
     // setup each of our background layers to take the full screen
     ['forest-back', 'forest-lights', 'forest-middle', 'forest-front']
         .forEach(function(image) {
-          var bg = scene.add.tileSprite(width / 2, height / 2, width,
+          var bg = scene.add.tileSprite(width * .5, height * .5, width,
             height, image, '', scene.background);
           bg.setTileScale(4,4);
         });
+
+    scene.player = {};
+    scene.player.clickDamage = 4;
+    scene.player.gold = 0;
+
+    scene.goldText = scene.add.text(width * .8, 15, "Gold: 0").setScale(2).setOrigin(.5).setColor("Red");
 
     var monsterData = [
       {name: 'Aerocephal', image: 'aerocephal'},
@@ -59,15 +65,23 @@ gameScene.create = function() {
   this.monsters = this.add.group();
 
   var monster;
-  monsterData.forEach(function(data) {
+  monsterData.forEach(function(data, index) {
       // create a sprite for them off screen
-      monster = scene.add.sprite(width / 2, height / 2, data.image);
+      monster = scene.add.sprite(width * .5, height *.5, data.image);
       // reference to the database
       monster.name = data.name;
   
       //enable input so we can click it!
       monster.active = true;
       monster.visible = false;
+      monster.maxHealth = index + 20;
+      monster.currentHealth = index + 20;
+      monster.damage = function(damage) {
+        this.currentHealth -= damage;
+        checkIfDead(scene, this);
+      }
+      monster.value = Math.floor((Math.random() * 10) + 1);
+      
       monster.setInteractive();
       scene.monsters.add(monster);
       
@@ -76,10 +90,10 @@ gameScene.create = function() {
       });
   });
 
-  scene.currentMonster = scene.monsters.getFirstAlive(false, width / 2, height / 2);
+  scene.currentMonster = scene.monsters.getFirstAlive(false, width * .65, height * .75);
   scene.currentMonster.visible = true;
-  scene.currentMonsterText = scene.add.text(width / 2, height / 8, scene.currentMonster.name).setScale(3).setOrigin(.5).setColor("Red");
-
+  scene.currentMonsterText = scene.add.text(width * .65, height * .4, scene.currentMonster.name).setScale(3).setOrigin(.5).setColor("Red");
+  scene.events.on('currentMonsterDead', killMonster, scene)
 }
 
 gameScene.render = function() {
@@ -89,23 +103,42 @@ gameScene.render = function() {
 gameScene.onClickMonster = function() {
   let { width, height } = this.sys.canvas;
   let scene = this;
+  scene.currentMonster.damage(scene.player.clickDamage);
+  //displayNextMonster(scene, width, height);
+}
+
+function killMonster() {
+  let scene = this;
+  scene.player.gold += scene.currentMonster.value;
+  scene.goldText.setText(`Gold: ${scene.player.gold}`)
+  displayNextMonster(scene)
+}
+
+function displayNextMonster(scene) {
+  let { width, height } = scene.sys.canvas;
   scene.currentMonster.active = false;
   scene.currentMonster.visible = false;
-  let nextMonster = scene.monsters.getFirstAlive(false, width / 2, height / 2);
+  let nextMonster = scene.monsters.getFirstAlive(false, width * .65, height * .75);
   if(nextMonster === null) {
     resetMonstersToAlive(scene);
-    nextMonster = scene.monsters.getFirstAlive(false, width / 2, height / 2);
+    nextMonster = scene.monsters.getFirstAlive(false, width * .65, height * .75);
   }
   scene.currentMonster = nextMonster;
-  this.currentMonsterText.setText(scene.currentMonster.name);
+  scene.currentMonsterText.setText(scene.currentMonster.name);
   nextMonster.visible = true;
+}
 
-  function resetMonstersToAlive(scene) {
-    let monsterArray = scene.monsters.getChildren();
+function resetMonstersToAlive(scene) {
+  let monsterArray = scene.monsters.getChildren();
 
-    for(let i = 0; i < monsterArray.length; i++) {
-      monsterArray[i].active = true;
-    }
+  for(let i = 0; i < monsterArray.length; i++) {
+    monsterArray[i].active = true;
+  }
+}
+
+function checkIfDead(scene, monster) {
+  if(monster.currentHealth <= 0) {
+    scene.events.emit('currentMonsterDead', scene.currentMonster);
   }
 }
 

@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/CKillen/discord-playground#readme",
   "dependencies": {
-    "express": "^4.17.1",
+    "express": "^4.17.3",
     "phaser": "^3.17.0"
   }
 }
